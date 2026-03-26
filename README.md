@@ -111,6 +111,18 @@ sudo chmod 644 /etc/rancher/k3s/k3s.yaml
 export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
 echo "export KUBECONFIG=/etc/rancher/k3s/k3s.yaml" >> ~/.bashrc
 ```
+## ⚙️  Jenkins Setup
+Install plugins:
+- Git
+- Pipeline
+- Docker Pipeline
+
+## 🔗  Connect GitHub
+In Jenkins:
+- New Item → Pipeline
+- Pipeline script from SCM
+- Add your GitHub repo URL
+
 ## ✅ Final Verification
 ```bash
 docker ps
@@ -133,6 +145,7 @@ kubectl get nodes
 - CRITICAL: 2
 - HIGH: 5
 - BUILD FAILED
+
 
 ## 🚀 Push Code to GitHub (Step-by-Step after creating files)
 ```bash
