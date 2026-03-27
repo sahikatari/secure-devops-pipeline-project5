@@ -1,40 +1,46 @@
 pipeline {
-agent any
+    agent any
 
-```
-environment {
-    IMAGE = "secure-app:latest"
-}
-
-stages {
-
-    stage('Clone') {
-        steps {
-            git 'https://github.com/sahikatari/secure-devops-pipeline-project5.git'
-        }
+    environment {
+        IMAGE = "secure-app"
     }
 
-    stage('Build Docker Image') {
-        steps {
-            sh 'docker build -t $IMAGE .'
+    stages {
+
+        stage('Cleanup') {
+            steps {
+                sh 'docker system prune -af || true'
+                sh 'rm -rf ~/.minikube || true'
+            }
+        }
+
+        stage('Clone') {
+            steps {
+                git 'https://github.com/your-username/secure-devops-pipeline.git'
+            }
+        }
+
+        stage('Build Image') {
+            steps {
+                sh 'docker build -t $IMAGE .'
+            }
+        }
+
+        stage('Scan Image') {
+            steps {
+                sh '''
+                trivy image --exit-code 1 --severity HIGH,CRITICAL $IMAGE
+                '''
+            }
+        }
+
+        stage('Run Container') {
+            steps {
+                sh '''
+                docker rm -f secure-app || true
+                docker run -d -p 30007:5000 --name secure-app $IMAGE
+                '''
+            }
         }
     }
-
-    stage('Trivy Scan (Fail if HIGH/CRITICAL)') {
-        steps {
-            sh '''
-            trivy image --exit-code 1 --severity HIGH,CRITICAL $IMAGE
-            '''
-        }
-    }
-
-    stage('Deploy to Kubernetes') {
-        steps {
-            sh 'kubectl apply -f deployment.yaml'
-            sh 'kubectl apply -f service.yaml'
-        }
-    }
-}
-```
-
 }
