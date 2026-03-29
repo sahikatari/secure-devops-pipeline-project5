@@ -20,6 +20,15 @@ pipeline {
             }
         }
 
+        stage('Pre-Cleanup') {
+    steps {
+        sh '''
+        rm -rf /var/lib/jenkins/.cache/trivy
+        docker system prune -a -f --volumes
+        '''
+    }
+}
+
         stage('Scan Image') {
             steps {
                 sh '''
