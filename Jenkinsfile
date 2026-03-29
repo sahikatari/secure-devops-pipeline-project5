@@ -2,9 +2,8 @@ pipeline {
     agent any
 
     environment {
-        IMAGE = "sahikatari/secure-app:latest"
-        DEPLOYMENT = "secure-app"
-        CONTAINER = "secure-app"
+        IMAGE = "sahikatari/secure-app"
+        TAG = "${BUILD_NUMBER}"
     }
 
     stages {
@@ -17,24 +16,24 @@ pipeline {
 
         stage('Build Image') {
             steps {
-                sh 'docker build -t $IMAGE .'
+                sh 'docker build -t $IMAGE:$TAG .'
             }
         }
 
-       stage('Scan Image (Trivy)') {
-    steps {
-        sh '''
-        trivy image --exit-code 0 --severity HIGH,CRITICAL $IMAGE
-        '''
-    }
-}
+        stage('Scan Image (Trivy)') {
+            steps {
+                sh '''
+                trivy image --exit-code 0 --severity HIGH,CRITICAL $IMAGE:$TAG
+                '''
+            }
+        }
 
-        stage('DockerHub Login & Push') {
+        stage('DockerHub Push') {
             steps {
                 withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', usernameVariable: 'USER', passwordVariable: 'PASS')]) {
                     sh '''
                     echo $PASS | docker login -u $USER --password-stdin
-                    docker push $IMAGE
+                    docker push $IMAGE:$TAG
                     '''
                 }
             }
@@ -43,8 +42,12 @@ pipeline {
         stage('Deploy to Kubernetes') {
             steps {
                 sh '''
-                kubectl set image deployment/$DEPLOYMENT $CONTAINER=$IMAGE
-                kubectl rollout status deployment/$DEPLOYMENT
+                export KUBECONFIG=/var/lib/jenkins/.kube/config
+
+                kubectl set image deployment/secure-app \
+                secure-app=$IMAGE:$TAG
+
+                kubectl rollout status deployment/secure-app
                 '''
             }
         }
