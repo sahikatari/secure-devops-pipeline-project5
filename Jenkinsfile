@@ -14,12 +14,6 @@ pipeline {
             }
         }
 
-        stage('Clone') {
-            steps {
-                git 'https://github.com/your-username/secure-devops-pipeline.git'
-            }
-        }
-
         stage('Build Image') {
             steps {
                 sh 'docker build -t $IMAGE .'
