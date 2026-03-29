@@ -9,7 +9,7 @@ pipeline {
 
         stage('Cleanup') {
             steps {
-                sh 'docker system prune -af || true'
+                sh 'docker system prune -f || true'
                 sh 'rm -rf ~/.minikube || true'
             }
         }
@@ -20,14 +20,13 @@ pipeline {
             }
         }
 
-      stage('Pre-Cleanup') {
-    steps {
-        sh '''
-        rm -rf ~/.cache/trivy || true
-        '''
-    }
-}
-}
+        stage('Pre-Cleanup') {
+            steps {
+                sh '''
+                rm -rf ~/.cache/trivy || true
+                '''
+            }
+        }
 
         stage('Scan Image') {
             steps {
