@@ -5,162 +5,313 @@ CI/CD Pipeline with Automated Docker Security Scanning and Deployment to Kuberne
 
 ---
 
-## 🧩 Scenario
+# 🔄 CI/CD Pipeline Workflow
 
-As a DevOps Engineer, the security team identified vulnerabilities in production containers.  
+Developer → GitHub → Jenkins → Docker → Trivy → Kubernetes
 
-The CTO mandated:
-
-> "Before any Docker image goes to production, it must be scanned for vulnerabilities. Automate security scanning inside the CI/CD pipeline."
-
----
-
-## 🎯 Objective
-
-Design a **secure CI/CD pipeline** where:
-
-- Application is containerized using Docker
-- Docker image is scanned for vulnerabilities
-- Build fails if **HIGH/CRITICAL vulnerabilities** are found
-- Only **secure images** are deployed to Kubernetes
+- Code pushed to GitHub  
+- Jenkins pipeline triggered  
+- Docker image built  
+- Image pushed to Docker Hub  
+- Trivy scans image  
+- ❌ If vulnerabilities → Pipeline FAIL  
+- ✅ If secure → Deploy to Kubernetes  
 
 ---
 
-## 📁 Project Structure
-- Dockerfile 
-- Jenkinsfile 
-- app
-- requirements.txt 
-- k8s/ 
-   - deployment.yaml
-   - service.yaml 
-- scan-report.txt 
-- README.md
+# 🛠️ Technologies Used
 
-## 🛠️ Technologies Used
-- Docker
-- Jenkins
-- Kubernetes
-- Trivy
-- GitHub 
+- Docker  
+- Jenkins  
+- Kubernetes (Minikube)  
+- Trivy  
+- GitHub  
 
-## ⚙️ Setup Instructions (t3.small)
- 🐳 1.  Install Docker
- ```bash
+---
+
+# ☁️ AWS EC2 Setup
+
+## 🔹 Launch EC2 Instance
+
+- Go to AWS Console  
+- Open EC2 Dashboard  
+- Click **Launch Instance**
+
+### Configure:
+- AMI: Ubuntu  
+- Instance Type: t3.small  
+- Key Pair: Create or select existing  
+
+---
+
+# 💾 EC2 Disk Storage & Volume Expansion
+
+## 📈 Step 1: Increase Volume in AWS Console
+
+- Go to **AWS EC2 Dashboard**
+- Navigate to **Elastic Block Store → Volumes**
+- Select your volume
+- Click **Modify Volume**
+- Increase size (e.g., 19GB → 30GB)
+- Click **Modify**
+
+---
+
+## 🔧 Step 2: Extend Partition in Linux
+
+```bash
+sudo growpart /dev/nvme0n1 1
+```
+
+---
+
+## 🔧 Step 3: Resize File System
+
+```bash
+sudo resize2fs /dev/root
+```
+
+---
+
+## 🔍 Step 4: Verify Updated Size
+
+```bash
+df -h
+```
+
+---
+
+# ⚙️ Installation Commands
+
+## 🐳 Docker Installation
+
+```bash
 sudo apt update
-sudo apt install -y docker.io
-sudo usermod -aG docker ubuntu
-newgrp docker
+sudo apt install docker.io -y
+sudo systemctl start docker
+sudo systemctl enable docker
+docker --version
 ```
-⚙️ 2. Install Jenkins
-```bash
-sudo apt update && sudo apt upgrade -y
-```
-```bash
-sudo apt install -y openjdk-17-jdk
-```
-```bash
-curl -fsSL https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key | sudo tee \
-/usr/share/keyrings/jenkins-keyring.asc > /dev/null
-```
-```
-echo deb [signed-by=/usr/share/keyrings/jenkins-keyring.asc] \
-https://pkg.jenkins.io/debian-stable binary/ | sudo tee \
-/etc/apt/sources.list.d/jenkins.list > /dev/null
-```
+
+---
+
+## 🔧 Jenkins Installation (Using Docker)
+
 ```bash
 sudo apt update
-sudo apt install -y jenkins
-sudo systemctl status jenkins
-```
-  - 👉 Open:
-http://EC2-IP:8080
+sudo apt install openjdk-17-jdk -y
+java --version
 
-🔐 3. Install Trivy (Security Scanner)
+sudo docker pull jenkins/jenkins:lts
+
+docker run -d -p 8080:8080 -p 50000:50000 --name jenkins jenkins/jenkins:lts
+```
+
+---
+
+## 🔐 Trivy Installation
 
 ```bash
-sudo apt install -y wget apt-transport-https gnupg lsb-release
+sudo apt install wget apt-transport-https gnupg lsb-release -y
 
-```
-```bash
 wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo apt-key add -
-```
-```bash
-echo deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main | sudo tee /etc/apt/sources.list.d/trivy.list
-```
-```bash
+
+echo deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main | \
+sudo tee /etc/apt/sources.list.d/trivy.list
+
 sudo apt update
-sudo apt install -y trivy
-```
-☸️ 4. Install K3s (Lightweight Kubernetes)
-```bash
-curl -sfL https://get.k3s.io | sh -
-```
-```bash
-sudo systemctl status k3s
-```
-```bash
-sudo kubectl get nodes
-```
-## 🔗 5. Important Integrations
-Allow Jenkins to use Docker & Jenkins to use kubectl
-```bash
-sudo usermod -aG docker jenkins
-sudo systemctl restart jenkins
-sudo chmod 644 /etc/rancher/k3s/k3s.yaml
-export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
-echo "export KUBECONFIG=/etc/rancher/k3s/k3s.yaml" >> ~/.bashrc
-```
-## ⚙️  Jenkins Setup
-Install plugins:
-- Git
-- Pipeline
-- Docker Pipeline
+sudo apt install trivy -y
 
-## 🔗  Connect GitHub
-In Jenkins:
-- New Item → Pipeline
-- Pipeline script from SCM
-- Add your GitHub repo URL
-
-## ✅ Final Verification
-```bash
-docker ps
-jenkins --version
 trivy --version
-kubectl get nodes
 ```
-## 🔐 Security Implementation
-- Trivy scans Docker images
-- Detects HIGH and CRITICAL vulnerabilities
-- Pipeline fails if vulnerabilities found
-- Prevents insecure deployments
 
- ## 🧪 Security Testing
- - Vulnerable dependency used:
-  ```bash
-   flask
-```
-### Output Example:
-- CRITICAL: 2
-- HIGH: 5
-- BUILD FAILED
+---
 
+## ☸️ Minikube Installation
 
-## 🚀 Push Code to GitHub (Step-by-Step after creating files)
 ```bash
-git init
-git add .
-git commit -m "Initial commit - CI/CD pipeline project"
-git remote add origin https://github.com/<your-username>/<repo-name>.git
-git push -u origin master
+curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+sudo install minikube-linux-amd64 /usr/local/bin/minikube
+
+minikube start
 ```
-## ✅ Final Result
-- Automated CI/CD pipeline
-- Security integrated
-- Deployment blocked on vulnerabilities
-- Runs on AWS Free Tier
 
+---
 
+## 📦 kubectl Installation
 
+```bash
+sudo apt install -y kubectl
+kubectl version --client
+```
 
+---
+
+# 📁 Project Structure
+
+```
+DevOps-project-CI-CD/
+
+├── myapp/
+│   ├── Dockerfile
+│   ├── Jenkinsfile
+│   ├── trivy-report.txt
+│   ├── docker_build_log.txt
+│   ├── package.json
+│   ├── service.js
+│   ├── app.js
+│   └── kubernetes/
+│       ├── deployment.yaml
+│       └── service.yaml
+│
+├── Screenshots/
+│  
+│   ├── Docker_container_status.png
+│   ├── Dockerhub_image_pushed.png
+│   ├── EC2_instance.png
+│   ├── Jenkins_Pipeline_Success.png
+│   ├── Kubernetes_Pods_and_Service_Running.png
+│   ├── Pipeline_Failed_Due_To_Trivy_Scan.png
+│   ├── Security_group_add.png
+│   └── Trivy_Vulnerability_Report.png
+│
+└── README.md
+```
+
+---
+
+# 🐳 Push Docker Image to Docker Hub
+
+## 🔹 Login
+
+```bash
+docker login
+```
+
+## 🔹 Build Image
+
+```bash
+docker build -t sahikatari/secure-app:latest .
+```
+
+## 🔹 Push Image
+
+```bash
+ docker push sahikatari/secure-app:latest
+```
+
+## 🔹 Verify
+
+- Go to Docker Hub  
+- Check repository  
+- Image should be visible  
+
+---
+
+# ☸️ Kubernetes Deployment
+
+## 🔹 Deploy Application
+
+```bash
+kubectl apply -f /kubernetes/deployment.yaml
+kubectl apply -f /kubernetes/service.yaml
+```
+
+## 🔹 Check Pods
+
+```bash
+kubectl get pods
+```
+
+## 🔹 Check Services
+
+```bash
+kubectl get svc
+```
+
+## 🔹 Access Application
+
+```bash
+minikube service <service-name>
+```
+
+## 🔹 Expected Output
+
+- Pods: Running  
+- Service: Active  
+- App accessible in browser  
+
+---
+
+# 🔐 Trivy Security Scan
+
+## 🔹 Scan Image
+
+```bash
+trivy image your-dockerhub-username/secure-app:latest
+```
+
+## 🔹 Save Report (TXT)
+
+```bash
+trivy image -f table -o trivy-report.txt your-dockerhub-username/secure-app:latest
+```
+
+## 🔹 Save Report (JSON)
+
+```bash
+trivy image -f json -o trivy-report.json your-dockerhub-username/secure-app:latest
+```
+
+## 🔹 Expected Output
+
+- Vulnerabilities (LOW, MEDIUM, HIGH, CRITICAL)  
+- Summary report  
+- Fix suggestions  
+
+## 🔹 Pipeline Behavior
+
+- ❌ HIGH/CRITICAL → Pipeline FAIL  
+- ✅ No critical issues → Deployment allowed  
+
+---
+
+# 🔄 Jenkins Pipeline
+
+## 🔹 Pipeline Flow
+
+- Code pushed to GitHub  
+- Jenkins triggers pipeline  
+- Pipeline executes stages  
+
+## 🔹 Stages
+
+- 📥 Clone Code  
+- 🐳 Build Docker Image  
+- 📤 Push Image  
+- 🔐 Trivy Scan  
+- 🚀 Run Container  
+- ☸️ Deploy to Kubernetes  
+
+## 🔹 Run Pipeline
+
+- Open Jenkins Dashboard  
+- Select pipeline job  
+- Click **Build Now**  
+- View **Console Output**
+
+## 🔹 Result
+
+- ✅ Success → App deployed  
+- ❌ Fail → Security issues detected  
+
+---
+
+# 🔐 Security Implementation
+
+- ✔️ Trivy vulnerability scanning  
+- ✔️ Automated security gating  
+- ✔️ Secure container deployment  
+- ✔️ CI/CD integrated security checks  
+
+---
