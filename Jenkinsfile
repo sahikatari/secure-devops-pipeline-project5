@@ -2,7 +2,9 @@ pipeline {
     agent any
 
     environment {
-        IMAGE = "secure-app"
+        IMAGE = "sahikatari/secure-app:latest"
+        DEPLOYMENT = "secure-app"
+        CONTAINER = "secure-app"
     }
 
     stages {
@@ -10,7 +12,6 @@ pipeline {
         stage('Cleanup') {
             steps {
                 sh 'docker system prune -f || true'
-                sh 'rm -rf ~/.minikube || true'
             }
         }
 
@@ -20,27 +21,28 @@ pipeline {
             }
         }
 
-        stage('Pre-Cleanup') {
+        stage('Scan Image (Trivy)') {
             steps {
-                sh '''
-                rm -rf ~/.cache/trivy || true
-                '''
+                sh 'trivy image --exit-code 1 --severity HIGH,CRITICAL $IMAGE'
             }
         }
 
-        stage('Scan Image') {
+        stage('DockerHub Login & Push') {
             steps {
-                sh '''
-                trivy image --exit-code 1 --severity HIGH,CRITICAL $IMAGE
-                '''
+                withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', usernameVariable: 'USER', passwordVariable: 'PASS')]) {
+                    sh '''
+                    echo $PASS | docker login -u $USER --password-stdin
+                    docker push $IMAGE
+                    '''
+                }
             }
         }
 
-        stage('Run Container') {
+        stage('Deploy to Kubernetes') {
             steps {
                 sh '''
-                docker rm -f secure-app || true
-                docker run -d -p 30007:5000 --name secure-app $IMAGE
+                kubectl set image deployment/$DEPLOYMENT $CONTAINER=$IMAGE
+                kubectl rollout status deployment/$DEPLOYMENT
                 '''
             }
         }
